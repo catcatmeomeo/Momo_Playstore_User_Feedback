@@ -15,7 +15,7 @@ Dự án này tập trung vào việc thu thập (crawl data) và phân tích ch
 ## 4. Hướng dẫn chạy dự án trên máy cục bộ (Local)
 1. Clone dự án về máy:
    ```bash
-   git clone https://github.com
+   https://github.com/catcatmeomeo/Momo_Playstore_User_Feedback.git
    ```
 2. Đảm bảo bạn đã cài đặt Python và các thư viện cần thiết (`pip install pandas numpy matplotlib seaborn notebook`).
 3. Chuẩn bị các file dữ liệu đầu vào (`MOMO.xlsx` và `MOMO_data_second.xlsx`) đặt cùng cấp thư mục với file notebook.
