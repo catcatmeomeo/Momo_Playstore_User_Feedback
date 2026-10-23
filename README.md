@@ -18,5 +18,8 @@ Dự án này tập trung vào việc thu thập (crawl data) và phân tích ch
    git clone https://github.com
    ```
 2. Đảm bảo bạn đã cài đặt Python và các thư viện cần thiết (`pip install pandas numpy matplotlib seaborn notebook`).
-3. Chuẩn bị các file dữ liệu đầu vào (`MOMO.xlsx` và `MOMO (crawl data second).xlsx`) đặt cùng cấp thư mục với file notebook.
-4. Mở VS Code hoặc Jupyter Notebook để chạy file `Analyze_Insight_Momo_wallet.ipynb`.
+3. Chuẩn bị các file dữ liệu đầu vào (`MOMO.xlsx` và `MOMO_data_second.xlsx`) đặt cùng cấp thư mục với file notebook.
+   https://1drv.ms/x/c/9793cac055b004a0/IQA-1-7yFEPITpIYWNkbSNmNAXSqK7PQhJ3gJTftl1um6Ig?e=sF1Om9 (MOMO_data_second.xlsx)
+   https://1drv.ms/x/c/9793cac055b004a0/IQDp5qZOz059R4i3ofgqpOysAb1Esimp45sGaOApx-Dy3yI?e=kWb0fx (MOMO.xlsx)
+   
+5. Mở VS Code hoặc Jupyter Notebook để chạy file `Analyze_Insight_Momo_wallet.ipynb`.
