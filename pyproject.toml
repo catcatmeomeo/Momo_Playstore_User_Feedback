@@ -1,0 +1,12 @@
+[project]
+name = "momo-reviews"
+version = "1.0.0"
+description = "Phân tích & mô hình hoá cảm xúc review ví MoMo trên Google Play"
+requires-python = ">=3.10"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

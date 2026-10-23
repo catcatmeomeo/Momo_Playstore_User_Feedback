@@ -1,4 +1,14 @@
 .ipynb_checkpoints/
 __pycache__/
+*.pyc
 .DS_Store
+.venv/
+.pytest_cache/
+*.egg-info/
+
+# Dữ liệu đầy đủ (~200k review) tái tạo được bằng `make data` -> không commit.
+# Model (~3MB) được commit để app demo chạy ngay.
+data/raw/
+data/processed/
+
 *.xlsx
