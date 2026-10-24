@@ -1,4 +1,4 @@
-"""Đường dẫn và hằng số dùng chung cho toàn bộ project."""
+"""Shared paths and constants for the whole project."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]

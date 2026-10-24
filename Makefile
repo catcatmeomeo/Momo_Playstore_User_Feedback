@@ -6,18 +6,18 @@ export PYTHONPATH := src
 install:
 	$(PY) -m pip install -r requirements.txt
 
-crawl:          ## Crawl toàn bộ review từ Google Play (~20–30 phút)
+crawl:          ## Crawl every review from Google Play (~30 min)
 	$(PY) -m momo_reviews.crawl
 
-preprocess:     ## Làm sạch dữ liệu + tạo sample
+preprocess:     ## Clean data + write sample
 	$(PY) -m momo_reviews.preprocess
 
 data: crawl preprocess
 
-model:          ## So sánh mô hình, lưu metrics + model tốt nhất
+model:          ## Compare models, save metrics + selected model
 	$(PY) -m momo_reviews.model
 
-notebooks:      ## Sinh lại và chạy toàn bộ notebook (cập nhật hình trong reports/figures)
+notebooks:      ## Rebuild and execute all notebooks (refreshes reports/figures)
 	$(PY) scripts/build_notebooks.py
 	cd notebooks && for nb in *.ipynb; do $(PY) -m jupyter nbconvert --to notebook --execute --inplace $$nb --ExecutePreprocessor.timeout=3600; done
 

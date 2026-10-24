@@ -32,7 +32,8 @@ def test_score_to_sentiment():
 
 def test_tag_aspects():
     tags = tag_aspects(normalize("Chuyển tiền bị trừ tiền, gọi tổng đài ko ai nghe"))
-    assert {"Chuyển & nhận tiền", "Mất tiền & hoàn tiền", "Chăm sóc khách hàng"} <= set(tags)
+    assert {"Money transfer", "Lost money & refunds", "Customer support"} <= set(tags)
+    assert "Loans & pay-later" in tag_aspects(normalize("Vay trả sau bị tính phí cao"))
     assert tag_aspects("") == []
 
 

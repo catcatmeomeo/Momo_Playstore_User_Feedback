@@ -1,8 +1,8 @@
-"""Mô hình phân loại cảm xúc review (negative / neutral / positive).
+"""Review sentiment classifier (negative / neutral / positive).
 
-Nhãn được suy ra từ số sao (weak supervision): 1-2 sao = negative, 3 = neutral,
-4-5 = positive. Chia train/test THEO THỜI GIAN (test = 20% review mới nhất) để
-đánh giá đúng kịch bản thực tế: train trên quá khứ, dự đoán review tương lai.
+Labels come from star ratings (weak supervision): 1-2 stars = negative,
+3 = neutral, 4-5 = positive. Train/test is split BY TIME (test = newest 20% of
+reviews) to mirror deployment: train on the past, predict future reviews.
 
     python -m momo_reviews.model
 """
@@ -30,7 +30,7 @@ log = logging.getLogger(__name__)
 
 
 def load_modeling_data(df: pd.DataFrame) -> pd.DataFrame:
-    """Bỏ review rỗng và spam quảng cáo, giữ thứ tự thời gian."""
+    """Drop empty and spam reviews, keep chronological order."""
     out = df[(df["n_words"] > 0) & (~df["is_spam"])]
     return out.sort_values("at").reset_index(drop=True)
 
@@ -41,15 +41,15 @@ def temporal_split(df: pd.DataFrame, test_size: float = 0.2):
 
 
 def word_vectorizer() -> TfidfVectorizer:
-    # Tiếng Việt là ngôn ngữ đơn lập: 1 "từ" thường gồm 2 âm tiết (chuyển khoản,
-    # tài khoản). Bigram âm tiết vì vậy xấp xỉ word segmentation mà không cần
-    # thư viện tách từ.
+    # Vietnamese is an isolating language: one "word" is often two syllables
+    # (chuyển khoản = transfer, tài khoản = account). Syllable bigrams therefore
+    # approximate word segmentation without a segmentation library.
     return TfidfVectorizer(ngram_range=(1, 2), min_df=3, max_df=0.9,
                            sublinear_tf=True, max_features=150_000)
 
 
 def char_vectorizer() -> TfidfVectorizer:
-    # Char n-gram bền với lỗi chính tả / thiếu dấu ("chuyen tien", "chuyển tìên").
+    # Char n-grams are robust to typos / missing diacritics ("chuyen tien", "chuyển tìên").
     return TfidfVectorizer(analyzer="char_wb", ngram_range=(2, 5), min_df=5,
                            sublinear_tf=True, max_features=200_000)
 
@@ -96,17 +96,17 @@ def evaluate(models: dict[str, Pipeline], train: pd.DataFrame, test: pd.DataFram
 
 
 def select_model(results: pd.DataFrame, tolerance: float = 0.005) -> str:
-    """Chọn mô hình huấn luyện nhanh nhất trong khoảng `tolerance` macro-F1 so với tốt nhất.
+    """Pick the fastest-to-train model within `tolerance` macro-F1 of the best one.
 
-    Chênh lệch < 0.5 điểm F1 nằm trong nhiễu của việc chia dữ liệu, trong khi
-    mô hình nhanh hơn rẻ hơn khi retrain và (với LogReg) cho xác suất dự đoán.
+    A gap below 0.5 F1 points is within split-to-split noise, while a faster
+    model is cheaper to retrain and (for LogReg) gives predicted probabilities.
     """
     ok = results[results["macro_f1"] >= results["macro_f1"].max() - tolerance]
     return ok.sort_values("train_seconds").iloc[0]["model"]
 
 
 def save_final_model(pipe: Pipeline, df: pd.DataFrame) -> Pipeline:
-    """Refit trên toàn bộ dữ liệu rồi lưu để dùng cho inference (app)."""
+    """Refit on all data and save it for inference (the app)."""
     final = clone(pipe).fit(df["text_clean"], df["sentiment"])
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
     joblib.dump(final, MODEL_FILE, compress=3)
@@ -114,7 +114,7 @@ def save_final_model(pipe: Pipeline, df: pd.DataFrame) -> Pipeline:
 
 
 def top_features(pipe: Pipeline, n: int = 20) -> pd.DataFrame:
-    """Các n-gram có trọng số lớn nhất cho từng lớp (chỉ cho mô hình tuyến tính)."""
+    """Highest-weighted n-grams per class (linear models only)."""
     vec, clf = pipe.named_steps["tfidf"], pipe.named_steps["clf"]
     names = np.asarray(vec.get_feature_names_out())
     out = {}
@@ -149,7 +149,7 @@ def main() -> None:
     (REPORTS_DIR / "metrics.json").write_text(json.dumps(metrics, indent=2, ensure_ascii=False))
 
     save_final_model(best, df)
-    log.info("Best: %s -> %s", best_name, MODEL_FILE)
+    log.info("Selected: %s -> %s", best_name, MODEL_FILE)
     print(results.to_string(index=False))
 
 

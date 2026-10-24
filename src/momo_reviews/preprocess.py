@@ -1,4 +1,4 @@
-"""Làm sạch dữ liệu thô -> dataset phân tích/huấn luyện.
+"""Clean the raw crawl into the analysis / training dataset.
 
     python -m momo_reviews.preprocess
 """
@@ -33,8 +33,8 @@ def build_clean(raw: pd.DataFrame) -> pd.DataFrame:
     df["at"] = pd.to_datetime(df["at"])
     df["repliedAt"] = pd.to_datetime(df["repliedAt"])
 
-    # Review không có appVersion vẫn giữ lại cho phân tích text; chỉ phân tích
-    # theo version mới cần lọc. (Notebook cũ drop toàn bộ -> mất ~10% dữ liệu.)
+    # Reviews without appVersion are kept for text analysis; only the per-version
+    # analysis filters them out. (v1 dropped them all and lost ~23% of the data.)
     df["version"] = df["appVersion"].fillna(df["reviewCreatedVersion"])
     df["major_version"] = df["version"].map(major_version)
 
@@ -60,13 +60,13 @@ def main() -> None:
     df = build_clean(raw)
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     df.to_parquet(CLEAN_FILE, index=False)
-    log.info("Clean: %d -> %d review, lưu %s", len(raw), len(df), CLEAN_FILE)
+    log.info("Clean: %d -> %d reviews, saved to %s", len(raw), len(df), CLEAN_FILE)
 
-    # Sample nhỏ commit lên GitHub để người xem chạy thử pipeline không cần crawl.
+    # Small sample committed to GitHub so visitors can try the app without crawling.
     SAMPLE_DIR.mkdir(parents=True, exist_ok=True)
     sample = df.groupby("sentiment", group_keys=False).sample(n=1000, random_state=RANDOM_STATE)
     sample[["reviewId", "content", "score", "at", "version", "thumbsUpCount"]].to_csv(SAMPLE_FILE, index=False)
-    log.info("Sample %d dòng -> %s", len(sample), SAMPLE_FILE)
+    log.info("Sample of %d rows -> %s", len(sample), SAMPLE_FILE)
 
 
 if __name__ == "__main__":

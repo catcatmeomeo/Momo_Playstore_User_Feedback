@@ -6,8 +6,8 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 
-# Dữ liệu đầy đủ (~200k review) tái tạo được bằng `make data` -> không commit.
-# Model (~3MB) được commit để app demo chạy ngay.
+# Full data (~200k reviews) is reproducible with `make data` -> not committed.
+# The model (~3MB) is committed so the demo app runs out of the box.
 data/raw/
 data/processed/
 

@@ -1,4 +1,4 @@
-"""Demo: phân loại cảm xúc + gắn khía cạnh cho review ví MoMo.
+"""Demo: sentiment classification + aspect tagging for MoMo e-wallet reviews.
 
     streamlit run app/streamlit_app.py
 """
@@ -15,7 +15,7 @@ from momo_reviews.aspects import tag_aspects
 from momo_reviews.config import MODEL_FILE
 from momo_reviews.text import is_spam, normalize
 
-LABEL_VI = {"negative": "😠 Tiêu cực", "neutral": "😐 Trung lập", "positive": "😊 Tích cực"}
+LABELS = {"negative": "😠 Negative", "neutral": "😐 Neutral", "positive": "😊 Positive"}
 
 st.set_page_config(page_title="MoMo Review Analyzer", page_icon="💬", layout="centered")
 
@@ -36,41 +36,44 @@ def analyze(texts: pd.Series, model) -> pd.DataFrame:
 
 
 st.title("💬 MoMo Review Analyzer")
-st.caption("Mô hình TF-IDF + linear classifier huấn luyện trên review ví MoMo trên Google Play. "
-           "Xem chi tiết tại notebooks/02_sentiment_model.ipynb.")
+st.caption("TF-IDF + linear classifier trained on 217k Vietnamese Google Play reviews of the MoMo e-wallet. "
+           "Details in notebooks/02_sentiment_model.ipynb. Reviews must be written in Vietnamese.")
 
 if not MODEL_FILE.exists():
-    st.error("Chưa có model. Chạy `make data model` trước.")
+    st.error("No model found. Run `make data model` first.")
     st.stop()
 model = load_model()
 
-tab1, tab2 = st.tabs(["Một review", "Nhiều review (CSV)"])
+tab1, tab2 = st.tabs(["Single review", "Batch (CSV)"])
 
 with tab1:
-    text = st.text_area("Nhập review", "Chuyển tiền bị trừ tiền mà người nhận không nhận được, gọi tổng đài không ai nghe")
-    if st.button("Phân tích", type="primary") and text.strip():
+    text = st.text_area("Review (Vietnamese)",
+                        "Chuyển tiền bị trừ tiền mà người nhận không nhận được, gọi tổng đài không ai nghe")
+    st.caption("Example above: *“Money was deducted but the recipient never got it, and nobody answers the hotline.”*")
+    if st.button("Analyze", type="primary") and text.strip():
         res = analyze(pd.Series([text]), model).iloc[0]
         c1, c2 = st.columns(2)
-        c1.metric("Cảm xúc", LABEL_VI[res["sentiment"]])
-        c2.metric("Spam quảng cáo?", "Có" if res["spam"] else "Không")
+        c1.metric("Sentiment", LABELS[res["sentiment"]])
+        c2.metric("Promotional spam?", "Yes" if res["spam"] else "No")
         if hasattr(model, "predict_proba"):
             proba = model.predict_proba([normalize(text)])[0]
-            st.bar_chart(pd.Series(proba, index=[LABEL_VI[c] for c in model.classes_], name="xác suất"))
-        st.write("**Khía cạnh được nhắc tới:**", res["aspects"] or "—")
-        st.caption(f"Văn bản sau chuẩn hoá: `{normalize(text)}`")
+            st.bar_chart(pd.Series(proba, index=[LABELS[c] for c in model.classes_], name="probability"))
+        st.write("**Aspects mentioned:**", res["aspects"] or "—")
+        st.caption(f"Normalised text: `{normalize(text)}`")
 
 with tab2:
-    up = st.file_uploader("CSV có cột `content`", type="csv")
+    up = st.file_uploader("CSV with a `content` column (try data/sample/momo_reviews_sample.csv)", type="csv")
     if up is not None:
         df = pd.read_csv(up)
         if "content" not in df.columns:
-            st.error("File cần có cột `content`.")
+            st.error("The file needs a `content` column.")
         else:
             out = analyze(df["content"], model)
+            st.write("**Predicted sentiment**")
             st.bar_chart(out["sentiment"].value_counts())
             aspects = out["aspects"].str.split(", ").explode().replace("", pd.NA).dropna()
-            st.write("**Khía cạnh phổ biến**")
+            st.write("**Most mentioned aspects**")
             st.bar_chart(aspects.value_counts())
             st.dataframe(out, use_container_width=True)
-            st.download_button("Tải kết quả", out.to_csv(index=False).encode("utf-8-sig"),
+            st.download_button("Download results", out.to_csv(index=False).encode("utf-8-sig"),
                                "momo_reviews_scored.csv", "text/csv")

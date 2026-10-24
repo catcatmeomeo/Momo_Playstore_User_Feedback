@@ -1,7 +1,7 @@
 [project]
 name = "momo-reviews"
 version = "1.0.0"
-description = "Phân tích & mô hình hoá cảm xúc review ví MoMo trên Google Play"
+description = "Analytics and Vietnamese sentiment modelling of MoMo e-wallet Google Play reviews"
 requires-python = ">=3.10"
 
 [tool.setuptools.packages.find]

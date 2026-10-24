@@ -1,4 +1,4 @@
-"""Style biểu đồ thống nhất cho mọi notebook."""
+"""Shared chart style for all notebooks."""
 from __future__ import annotations
 
 import matplotlib.pyplot as plt

@@ -1,20 +1,21 @@
-"""Chuẩn hoá văn bản review tiếng Việt.
+"""Vietnamese review text normalisation.
 
-Review trên Play Store viết rất "đời": teencode (ko, dc, j), kéo dài ký tự
-(quáaaa), emoji, viết hoa lung tung, dấu câu lặp. Module này đưa chúng về một
-dạng thống nhất để mô hình học được tín hiệu thay vì nhiễu.
+Play Store reviews are written very informally: teencode/abbreviations
+(ko, dc, j), stretched characters (quáaaa), emoji, random casing and repeated
+punctuation. This module maps them to one consistent form so models learn
+signal instead of noise.
 """
 from __future__ import annotations
 
 import re
 import unicodedata
 
-# Teencode / viết tắt phổ biến trong review ví điện tử. Key là token đã lowercase.
+# Common Vietnamese teencode / abbreviations in e-wallet reviews (keys are lowercased tokens).
 TEENCODE = {
     "ko": "không", "k": "không", "khg": "không", "hok": "không",
     "hông": "không", "kg": "không", "khong": "không", "kô": "không", "hk": "không",
     "dc": "được", "đc": "được", "dk": "được", "đk": "được", "duoc": "được",
-    "j": "gì", "gi": "gì", "z": "vậy", "v": "vậy", "vay": "vậy",
+    "j": "gì", "gi": "gì", "z": "vậy", "v": "vậy",
     "mn": "mọi người", "mng": "mọi người", "ng": "người", "nguoi": "người",
     "vs": "với", "voi": "với", "bt": "bình thường", "bth": "bình thường",
     "tk": "tài khoản", "sdt": "số điện thoại", "sđt": "số điện thoại",
@@ -32,7 +33,7 @@ TEENCODE = {
     "good": "tốt", "nice": "tốt", "great": "tốt", "bad": "tệ", "tot": "tốt",
 }
 
-# Emoji mang cảm xúc rõ -> đổi thành token đặc biệt để giữ tín hiệu.
+# Emoji with a clear polarity -> special tokens, so the signal survives punctuation removal.
 EMOJI_MAP = {
     "pos_emoji": "😀😃😄😁😆😊🙂😍🥰😘❤️❤💕💖💯👍👏🙏🌹😻🤩🥳✨💪👌",
     "neg_emoji": "😡😠🤬😤😞😔😢😭😩😫👎💩🙄😒😑😕☹🙁🤮😾",
@@ -46,10 +47,10 @@ _REPEAT_RE = re.compile(r"(\w)\1{2,}")  # quáaaa -> quá
 _NON_WORD_RE = re.compile(r"[^\w\s]")
 _SPACE_RE = re.compile(r"\s+")
 
-# Review quảng cáo app khác / mời nhập mã giới thiệu -> spam, không phản ánh trải nghiệm MoMo.
-#   - mời nhập mã / tải app khác để nhận tiền
-#   - tên miền bị cố tình viết lệch để lách bộ lọc: "VAY9 . C0M", "( W E B )"
-#   - chiến dịch spam lặp lại (vd "TinChac")
+# Reviews advertising other apps / referral codes are spam and say nothing about MoMo:
+#   - "enter code (9 1 1 3 ...) to get 800k"
+#   - domains deliberately obfuscated to dodge filters: "VAY9 . C0M", "( W E B )"
+#   - recurring spam campaigns (e.g. "TinChac")
 SPAM_RE = re.compile(
     r"(nhập mã\s*\(?\s*[\d ]{6,}|mã giới thiệu\s*:?\s*\w*\d{4,}|kiếm thêm thu nhập|kiếm tiền online|"
     r"kiếm thêm (thì|lúc)|zalo:? ?0\d|tinchac|"
@@ -59,7 +60,7 @@ SPAM_RE = re.compile(
 
 
 def normalize(text: str | None) -> str:
-    """Chuẩn hoá 1 review về dạng lowercase, đã thay teencode, không dấu câu."""
+    """Normalise one review: lowercase, teencode expanded, punctuation removed."""
     if not isinstance(text, str) or not text.strip():
         return ""
     text = unicodedata.normalize("NFC", text).lower()

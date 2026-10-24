@@ -1,10 +1,12 @@
-"""Crawl toàn bộ review của ví MoMo trên Google Play Store.
+"""Crawl every MoMo e-wallet review on Google Play.
 
-Crawl theo batch kèm continuation token và ghi checkpoint định kỳ, nên nếu bị
-ngắt giữa chừng có thể chạy lại mà không mất dữ liệu đã lấy.
+Reviews are fetched in batches with a continuation token. Progress is
+checkpointed to a separate ``.partial`` file and only moved over the real
+dataset once the crawl completes, so an interrupted run never overwrites a
+previously complete dataset.
 
-    python -m momo_reviews.crawl            # crawl toàn bộ
-    python -m momo_reviews.crawl --max 5000 # crawl thử 5000 review mới nhất
+    python -m momo_reviews.crawl            # crawl everything
+    python -m momo_reviews.crawl --max 5000 # quick run: 5,000 newest reviews
 """
 from __future__ import annotations
 
@@ -17,9 +19,10 @@ from google_play_scraper import Sort, reviews
 
 from .config import APP_ID, COUNTRY, LANG, RAW_DIR, RAW_FILE
 
+PARTIAL_FILE = RAW_FILE.with_suffix(".partial.parquet")
 log = logging.getLogger(__name__)
 
-# userName / userImage là dữ liệu cá nhân, không cần cho phân tích -> không lưu.
+# userName / userImage are personal data and not needed for analysis -> never stored.
 KEEP_COLS = [
     "reviewId", "content", "score", "thumbsUpCount", "reviewCreatedVersion",
     "at", "replyContent", "repliedAt", "appVersion",
@@ -39,19 +42,19 @@ def crawl(max_reviews: int | None = None, batch_size: int = 200,
                     count=batch_size, continuation_token=token,
                 )
                 break
-            except Exception as exc:  # lỗi mạng / rate limit -> backoff
+            except Exception as exc:  # network error / rate limit -> back off
                 wait = 2 ** attempt
-                log.warning("Batch lỗi (%s), thử lại sau %ss", exc, wait)
+                log.warning("Batch failed (%s), retrying in %ss", exc, wait)
                 time.sleep(wait)
         else:
-            log.error("Bỏ cuộc sau 5 lần thử, lưu phần đã crawl.")
-            break
+            # Keep the previous complete dataset untouched; progress stays in PARTIAL_FILE.
+            raise RuntimeError(f"Giving up after 5 attempts; partial crawl kept in {PARTIAL_FILE}")
 
         rows.extend({k: r.get(k) for k in KEEP_COLS} for r in batch)
         n_batches += 1
         if n_batches % checkpoint_every == 0:
-            _save(rows)
-            log.info("Đã crawl %d review", len(rows))
+            _save(rows, PARTIAL_FILE)
+            log.info("Crawled %d reviews", len(rows))
 
         if not batch or token is None or token.token is None:
             break
@@ -59,23 +62,25 @@ def crawl(max_reviews: int | None = None, batch_size: int = 200,
             break
         time.sleep(sleep_s)
 
-    return _save(rows)
+    df = _save(rows, PARTIAL_FILE)
+    PARTIAL_FILE.replace(RAW_FILE)  # atomic swap only after a complete crawl
+    return df
 
 
-def _save(rows: list[dict]) -> pd.DataFrame:
+def _save(rows: list[dict], path) -> pd.DataFrame:
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     df = pd.DataFrame(rows, columns=KEEP_COLS).drop_duplicates("reviewId")
-    df.to_parquet(RAW_FILE, index=False)
+    df.to_parquet(path, index=False)
     return df
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--max", type=int, default=None, help="Số review tối đa")
+    parser.add_argument("--max", type=int, default=None, help="Maximum number of reviews")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
     df = crawl(max_reviews=args.max)
-    log.info("Hoàn tất: %d review -> %s", len(df), RAW_FILE)
+    log.info("Done: %d reviews -> %s", len(df), RAW_FILE)
 
 
 if __name__ == "__main__":
